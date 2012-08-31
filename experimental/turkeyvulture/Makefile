@@ -1,8 +1,16 @@
+.PHONY: build
+
 all: clean build
 
+
+
 clean:
-	rm -f templates.js index.json
+	rm -f build/templates.js
+	rm -rf build/index
+	rm -rf ../../site/media/js/turkeyvulture
 
 build:
-	python js.py > templates.js
-	python build_index.py
+	python js.py > build/templates.js
+	mkdir -p build/index
+	python build_index.py ca > build/index/ca.json
+	cp -R build ../../site/media/js/turkeyvulture
