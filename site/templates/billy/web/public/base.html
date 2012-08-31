@@ -60,6 +60,9 @@
       var feedback_widget = new GSFN.feedback_widget(feedback_widget_options);
     </script>
 
+    <script>
+      var abbr = "{{abbr|default:'all'}}";
+    </script>
 </head>
 
 <body class="{% block bodyclass %}{% endblock %}">
@@ -133,8 +136,8 @@
                                <li><a href="https://twitter.com/openstates">@openstates</a></li>
                                <li><a href="/contact/">{% trans "Contact Us" %}</a></li>
                                <li><a href="/about/">{% trans "About Open States" %}</a></li>
-                            <ul>   
-                        </dd> 
+                            <ul>
+                        </dd>
                     </dl>
                 </div>
                 <h4 class="withTip h5">{% trans "Like This Project and Want to Discover Others Like It?" %}</h4>
@@ -169,4 +172,9 @@
       loadChartbeat : function() { oldonload(); loadChartbeat(); };
   })();
 </script>
+<script src="{% static 'js/turkeyvulture/highlight.js' %}"></script>
+<script src="{% static 'js/turkeyvulture/sprintf-0.7-beta1.js' %}"></script>
+<script src="{% static 'js/turkeyvulture/templates.js' %}"></script>
+<script src="{% static 'js/turkeyvulture/search.js' %}"></script>
+<script src="{% static 'js/turkeyvulture/app.js' %}"></script>
 </body>
