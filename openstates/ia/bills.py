@@ -46,7 +46,6 @@ class IABillScraper(BillScraper):
             for bill_id in bill_ids:
                 self._subjects[bill_id.replace(' ', '')].append(subject)
 
-
     def scrape(self, chamber, session):
 
         self._build_subject_map(session)
@@ -120,13 +119,13 @@ class IABillScraper(BillScraper):
             for version_name in versions:
                 version_url = '/'.join((version_base, version_name,
                                         version_end))
-                bill.add_version(version_name, version_url)
+                bill.add_version(version_name, version_url,
+                                 mimetype='text/html')
         else:
             bill.add_version('Introduced',
                 sidebar.xpath('//a[contains(string(.), "PDF")]/@href')[0],
                              mimetype='application/pdf'
                             )
-
 
         sponsors = page.xpath("string(//table[2]/tr[3])").strip()
         sponsor_re = r'[\w-]+(?:, [A-Z]\.)?(?:,|(?: and)|\.$)'
@@ -159,6 +158,16 @@ class IABillScraper(BillScraper):
 
             action = tr.xpath("string(td[2])").strip()
             action = re.sub(r'\s+', ' ', action)
+
+            # Capture any amendment links.
+            version_urls = set(version['url'] for version in bill['versions'])
+            if 'amendment' in action.lower():
+                for anchor in tr.xpath('td[2]/a'):
+                    if '-' in anchor.text:
+                        url = anchor.attrib['href']
+                        if url not in version_urls:
+                            bill.add_version(anchor.text, url, mimetype='text/html')
+                            version_urls.add(url)
 
             if 'S.J.' in action or 'SCS' in action:
                 actor = 'upper'

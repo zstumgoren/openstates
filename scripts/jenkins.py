@@ -75,10 +75,10 @@ states = {
     'wv': 'West Virginia',
     'wy': 'Wyoming'}
 
-urls = {'data': ('http://staging.openstates.org/jenkins/job/'
-                 '{state}/ws/data/{abbr}/*zip*/{abbr}.zip'),
-        'cache': ('http://staging.openstates.org/jenkins/job/'
-                  '{state}/ws/cache/*zip*/cache.zip')}
+urls = {'data': ('http://jenkins.openstates.org/job/'
+                 '{state}/ws/data/{abbr}/*zip*/in.zip'),
+        'cache': ('http://jenkins.openstates.org/job/'
+                 '{state}/ws/cache/*zip*/cache.zip')}
 
 # Logging config
 logger = logging.getLogger('janky-import')

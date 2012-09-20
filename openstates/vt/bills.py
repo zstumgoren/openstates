@@ -8,6 +8,7 @@ from billy.scrape.votes import Vote
 import lxml.html
 
 from .utils import DOUBLED_NAMES
+from .actions import Categorizer
 
 
 def parse_exec_date(date_str):
@@ -43,63 +44,64 @@ def clean_action(action):
 
 
 def action_type(action):
-    action = action.lower()
-    atypes = []
+    # action = action.lower()
+    # atypes = []
 
-    if re.match('^read (the )?(first|1st) time', action):
-        atypes.append('bill:introduced')
-        atypes.append('bill:reading:1')
+    # if re.match('^read (the )?(first|1st) time', action):
+    #     atypes.append('bill:introduced')
+    #     atypes.append('bill:reading:1')
 
-    if 'read second time' in action:
-        atypes.append('bill:reading:2')
+    # if 'read second time' in action:
+    #     atypes.append('bill:reading:2')
 
-    if 'proposal of amendment concurred in' in action:
-        atypes.append('amendment:passed')
+    # if 'proposal of amendment concurred in' in action:
+    #     atypes.append('amendment:passed')
 
-    if re.match(r'proposal of amendment by .* agreed to', action):
-        atypes.append('amendment:passed')
+    # if re.match(r'proposal of amendment by .* agreed to', action):
+    #     atypes.append('amendment:passed')
 
-    if action.endswith('and passed'):
-        atypes.append('bill:passed')
+    # if action.endswith('and passed'):
+    #     atypes.append('bill:passed')
 
-    if action.startswith('read third time'):
-        atypes.append('bill:reading:3')
+    # if action.startswith('read third time'):
+    #     atypes.append('bill:reading:3')
 
-    if action.startswith('signed by governor'):
-        atypes.append('governor:signed')
+    # if action.startswith('signed by governor'):
+    #     atypes.append('governor:signed')
 
-    if 'reported favorably' in action or 'favorable report' in action:
-        atypes.append('committee:passed:favorable')
+    # if 'reported favorably' in action or 'favorable report' in action:
+    #     atypes.append('committee:passed:favorable')
 
-    if 'reported unfavorably' in action or 'unfavorable report' in action:
-        atypes.append('committee:passed:unfavorable')
+    # if 'reported unfavorably' in action or 'unfavorable report' in action:
+    #     atypes.append('committee:passed:unfavorable')
 
-    if 'reported without recommendation' in action:
-        atypes.append('committee:passed')
+    # if 'reported without recommendation' in action:
+    #     atypes.append('committee:passed')
 
-    if re.match(r'(re)?committed to committee', action):
-        atypes.append('committee:referred')
+    # if re.match(r'(re)?committed to committee', action):
+    #     atypes.append('committee:referred')
 
-    if 'referred to' in action:
-        atypes.append('committee:referred')
+    # if 'referred to' in action:
+    #     atypes.append('committee:referred')
 
-    if 'motion to amend bill agreed to' in action:
-        atypes.append('amendment:passed')
+    # if 'motion to amend bill agreed to' in action:
+    #     atypes.append('amendment:passed')
 
-    if 'read 3rd time & passed' in action:
-        atypes.append('bill:passed')
-        atypes.append('bill:reading:3')
+    # if 'read 3rd time & passed' in action:
+    #     atypes.append('bill:passed')
+    #     atypes.append('bill:reading:3')
 
-    if re.match(r'^floor amendment by (.*) agreed to$', action):
-        atypes.append('amendment:passed')
+    # if re.match(r'^floor amendment by (.*) agreed to$', action):
+    #     atypes.append('amendment:passed')
 
-    if atypes:
-        return atypes
+    # if atypes:
+    #     return atypes
     return ['other']
 
 
 class VTBillScraper(BillScraper):
     state = 'vt'
+    categorizer = Categorizer()
 
     def scrape(self, chamber, session, only_bills=None):
         if chamber == 'lower':
@@ -153,7 +155,11 @@ class VTBillScraper(BillScraper):
 
         for link in page.xpath("//b[text()='Bill Text:']/"
                                "following-sibling::blockquote/a"):
-            bill.add_version(link.text, link.attrib['href'])
+            if link.attrib['href'].endswith('pdf'):
+                mimetype = 'application/pdf'
+            elif link.attrib['href'].endswith('htm'):
+                mimetype = 'text/html'
+            bill.add_version(link.text, link.attrib['href'], mimetype=mimetype)
 
         more_sponsor_link = page.xpath("//a[text()='More Sponsors']")
         if page.xpath("//a[text()='More Sponsors']"):
@@ -194,8 +200,11 @@ class VTBillScraper(BillScraper):
                 date = datetime.datetime.strptime(date, "%m/%d/%Y")
                 date = date.date()
 
-            bill.add_action(actor, action, date,
-                            type=action_type(action))
+            types, attrs = self.categorizer.categorize(action)
+            action = dict(actor=actor, action=action,
+                          date=date, type=types)
+            action.update(**attrs)
+            bill.add_action(**action)
 
             for vote_link in tr.xpath("td[4]/a"):
                 self.scrape_vote(bill, actor, vote_link.attrib['href'])
@@ -218,7 +227,8 @@ class VTBillScraper(BillScraper):
         for td in page.xpath("//h3/following-sibling::"
                              "blockquote/table/tr/td"):
             name = td.xpath("string()").strip()
-            bill.add_sponsor("primary", name)
+            if name:
+                bill.add_sponsor("primary", name)
 
     def scrape_vote(self, bill, chamber, url):
         page = self.urlopen(url)
