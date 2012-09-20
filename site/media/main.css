@@ -742,3 +742,24 @@ pre {
     padding:          10px;
     border:           1px solid #E0DEDB;
 }
+
+#suggest {
+    position: absolute;
+    top: 40px;
+    width: 263px;
+    background-color: #FFFFEE;
+    border: 1px solid #E5E4DB;
+    z-index: 1;
+}
+
+#suggest-content {
+    margin: 10px;
+}
+
+.suggest-item {
+    padding-left: 10px;
+}
+
+.highlight {
+    background-color: #ffff99;
+}
