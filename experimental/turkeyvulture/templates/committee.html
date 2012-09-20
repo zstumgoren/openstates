@@ -6,7 +6,7 @@
         <strong>Joint</strong>
         {% for c in objects.joint %}
             <li class="suggest-item"><span>
-                <a href='http://openstates.org/{{c.state}}/committees/{{c._id}}/'>{{ c.committee }}</a>
+                <a href='/{{c.state}}/committees/{{c._id}}/'>{{ c.committee }}</a>
             </span></li>
         {% endfor %}
     {% endif %}
@@ -15,7 +15,7 @@
         <strong>Upper</strong>
         {% for c in objects.upper %}
             <li class="suggest-item"><span>
-                <a href='http://openstates.org/{{c.state}}/committees/{{c._id}}/'>{{ c.committee }}</a>
+                <a href='/{{c.state}}/committees/{{c._id}}/'>{{ c.committee }}</a>
             </span></li>
         {% endfor %}
     {% endif %}
@@ -24,7 +24,7 @@
         <strong>Lower</strong>
         {% for c in objects.lower %}
             <li class="suggest-item"><span>
-                <a href='http://openstates.org/{{c.state}}/committees/{{c._id}}/'>{{ c.committee }}</a>
+                <a href='/{{c.state}}/committees/{{c._id}}/'>{{ c.committee }}</a>
             </span></li>
         {% endfor %}
         </ul>
