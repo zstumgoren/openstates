@@ -1,26 +1,24 @@
+from os.path import join
+
+import logbook
 from jinja2 import Template
+
+from billy.models import db
 import jsindex
 
 
-templates = {
+logger = logbook.Logger('jsindex')
 
+templates = {
     'committees': Template(
         '{{obj.committee}} {{obj.subcommittee}}'),
 
     'legislators': Template(
         '{{obj.full_name}} {{obj.district}} {{obj.party}}'),
-
-    # 'bills': Template('''
-    #     {{obj.bill_id}} {{obj.title}}
-    #     {% for subject in obj.subjects %}
-    #         {{ subject }}
-    #     {% endfor %}
-    #     ''')
     }
 
 
 def build_index(state):
-    from billy.models import db
     index = jsindex.IndexBuilder()
 
     cname = 'legislators'
@@ -29,7 +27,6 @@ def build_index(state):
     coll = getattr(db, cname)
     spec = {'state': state, 'active': True}
     objects = coll.find(spec)
-    print 'adding', objects.count(), cname, 'with spec %r' % spec
     renderer = lambda obj: templates[cname].render(obj=obj)
     index.add(cname[0], objects, renderer, all_substrs=True, storekeys=storekeys)
 
@@ -38,24 +35,24 @@ def build_index(state):
     coll = getattr(db, cname)
     spec = {'state': state}
     objects = coll.find(spec)
-    print 'adding', objects.count(), cname, 'with spec %r' % spec
     renderer = lambda obj: templates[cname].render(obj=obj)
     index.add(cname[0], objects, renderer, all_substrs=True, storekeys=storekeys)
 
     return index
 
-    # spec.update(session='20112012')
-    # storekeys = ['bill_id', 'title', '_type', 'subjects', 'type', 'scraped_subjects',
-    #              'state', '_id', 'session']
-    # objects = db.bills.find(spec)
-    # print 'adding', objects.count(), 'bills', 'with spec %r' % spec
-    # renderer = lambda obj: templates['bills'].render(obj=obj)
-    # index.add('b', objects, renderer, substrs=True, storekeys=storekeys)
+
+def main(output_folder, abbrs):
+    for abbr in abbrs:
+        logger.info('Building index for %r' % abbr)
+        index = build_index(abbr)
+        path = join(output_folder, '%s.json' % abbr)
+        with open(path, 'w') as f:
+            logger.info('  ..writing index to %r' % path)
+            index.dump(f)
+
 
 if __name__ == '__main__':
     import sys
-    state = sys.argv[1]
-    index = build_index(state)
-    jd = index.jsondata()
-    js = index.as_json(showsizes=True)
-    print index.dumps()
+    output_folder = sys.argv[1]
+    abbrs = sys.argv[2:] or db.metadata.distinct('_id')
+    main(output_folder, abbrs)
