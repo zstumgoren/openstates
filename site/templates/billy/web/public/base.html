@@ -72,6 +72,7 @@
             <button type="submit">
                 <span>{% trans "Search" %}</span>
             </button>
+            <div id="suggest" class="clear"></div>
         </form>
         <h1 class="clear"><a class="textReplace" href="/">Open States</a></h1>
         <div id="shareBtns"></div>
@@ -172,6 +173,7 @@
       loadChartbeat : function() { oldonload(); loadChartbeat(); };
   })();
 </script>
+<script src="{% static 'js/underscore.js' %}"></script>
 <script src="{% static 'js/turkeyvulture/highlight.js' %}"></script>
 <script src="{% static 'js/turkeyvulture/sprintf-0.7-beta1.js' %}"></script>
 <script src="{% static 'js/turkeyvulture/templates.js' %}"></script>
