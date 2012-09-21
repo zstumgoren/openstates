@@ -756,6 +756,11 @@ pre {
     margin: 10px;
 }
 
+.suggest-heading {
+    text-transform: None;
+    margin-bottom: 10px
+}
+
 .suggest-item {
     padding-left: 10px;
 }

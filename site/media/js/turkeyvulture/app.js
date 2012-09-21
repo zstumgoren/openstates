@@ -57,7 +57,7 @@ $(document).ready(function() {
 
                 // Replace undefined with list, mainly to play
                 // nice with the template renderer, and also because
-                // I suck at javascript.
+                // of my weaksauce javascript skills.
                 _.each(['person', 'committee'], function(k){
 
                     // Regroup the objects by chamber.
@@ -101,6 +101,7 @@ $(document).ready(function() {
                             count: count};
                         var content = template.render(context);
 
+                        results[k + '_data'] = results[k];
                         results[k] = {"__jsonjinja_wire__": "html-safe", "value": content};
 
 
@@ -113,16 +114,25 @@ $(document).ready(function() {
 
                 /* Render the layout. */
                 results.abbr = abbr;
+                results.searchterm = w;
                 var layout_name = 'layout.html';
                 var layout_template = jsonjinja.getTemplate(layout_name);
                 var content = layout_template.render(results);
 
-                // Swap.
-                $("#suggest").replaceWith(content);
-                $("#suggest").hover(unblurfunc, blurfunc);
-
-                // Highlight.
-                $('#suggest-content').highlight(w);
+                // Swap, but only if there are results.
+                var lengths = [
+                    ((results.person_data || []).upper || []).length,
+                    ((results.person_data || []).lower || []).length,
+                    ((results.committee_data || []).upper || []).length,
+                    ((results.committee_data || []).lower || []).length,
+                    ((results.committee_data || []).joint || []).length];
+                if (_.reduce(lengths, function(x, y){return x + y;})){
+                        $("#suggest").replaceWith(content);
+                        $("#suggest").hover(unblurfunc, blurfunc);
+                        $('#suggest-content').highlight(w);
+                    } else {
+                        $("#suggest").html('');
+                    }
                 }
             });
 

@@ -483,9 +483,9 @@ jsonjinja.addTemplates(
   function root(rts) {
     var w = rts.writeFunc;
     var l_objects_0 = rts.lookupVar("objects"), l_count_0 = rts.lookupVar("count");
-    w("<div id=\"suggest-committees\" class=\"clear\">\n    <h3>Committees (");
+    w("<div id=\"suggest-committees\" class=\"clear\">\n    <hr/>\n    <h4 class='suggest-heading'>Committees (");
     w(rts.info.finalize(l_count_0));
-    w(")</h3>\n    <ul>\n\n    ");
+    w(")</h4>\n    <ul>\n\n    ");
     if (l_objects_0["joint"]) { 
       var l_loop_0 = rts.lookupVar("loop");
       w("\n        <strong>Joint</strong>\n        ");
@@ -543,8 +543,10 @@ jsonjinja.addTemplates(
 }),"layout.html":(function(rt) {
   function root(rts) {
     var w = rts.writeFunc;
-    var l_committee_0 = rts.lookupVar("committee"), l_person_0 = rts.lookupVar("person");
-    w("<div id=\"suggest\">\n    <div class=\"clearfix\"></div>\n    <div id=\"suggest-content\">\n    ");
+    var l_committee_0 = rts.lookupVar("committee"), l_person_0 = rts.lookupVar("person"), l_searchterm_0 = rts.lookupVar("searchterm");
+    w("<div id=\"suggest\">\n    <div class=\"clearfix\"></div>\n    <div id=\"suggest-content\">\n    <i>Press enter to search bills for \"");
+    w(rts.info.finalize(l_searchterm_0));
+    w("\"</i>\n    ");
     if (l_person_0) { 
       w("\n        ");
       w(rts.info.finalize(l_person_0));
@@ -567,9 +569,9 @@ jsonjinja.addTemplates(
   function root(rts) {
     var w = rts.writeFunc;
     var l_objects_0 = rts.lookupVar("objects"), l_count_0 = rts.lookupVar("count");
-    w("<div class='suggest-legislators' class=\"clear\">\n    <h3>Legislators (");
+    w("<div class='suggest-legislators' class=\"clear\">\n    <hr/>\n    <h4 class='suggest-heading'>Legislators (");
     w(rts.info.finalize(l_count_0));
-    w(")</h3>\n    <ul>\n\n    ");
+    w(")</h4>\n    <ul>\n\n    ");
     if (l_objects_0["upper"]) { 
       var l_loop_0 = rts.lookupVar("loop");
       w("\n        <strong>Upper</strong>\n        ");
