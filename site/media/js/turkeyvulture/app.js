@@ -119,13 +119,15 @@ $(document).ready(function() {
                 var layout_template = jsonjinja.getTemplate(layout_name);
                 var content = layout_template.render(results);
 
-                // Swap, but only if there are results.
+                // Are there results?
                 var lengths = [
                     ((results.person_data || []).upper || []).length,
                     ((results.person_data || []).lower || []).length,
                     ((results.committee_data || []).upper || []).length,
                     ((results.committee_data || []).lower || []).length,
                     ((results.committee_data || []).joint || []).length];
+
+                // Swap, but only if there are results.
                 if (_.reduce(lengths, function(x, y){return x + y;})){
                         $("#suggest").replaceWith(content);
                         $("#suggest").hover(unblurfunc, blurfunc);
