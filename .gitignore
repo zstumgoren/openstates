@@ -18,8 +18,7 @@ testdata/html_data
 billy_local.py
 site/collected_static
 site/openstates
-<<<<<<< HEAD
-+*.sublime*
-=======
+*.sublime*
 openstates.sqlite3
->>>>>>> 2de8c0acd852e871931029ee08c34fd133d06d87
+site/media/js/turkeyvulture/index/*
+*dump.tar.gz

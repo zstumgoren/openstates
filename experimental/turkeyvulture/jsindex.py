@@ -20,6 +20,7 @@ import itertools
 import time
 import datetime
 import re
+
 import nltk
 
 
@@ -128,6 +129,9 @@ class IndexBuilder(object):
 
     def dump(self, fp):
         json.dump(self.jsondata(), fp, cls=JSONDateEncoder)
+
+    def dumps(self):
+        return json.dumps(self.jsondata(), cls=JSONDateEncoder)
 
     def query(self, word):
         stem = self.stem_word(word)

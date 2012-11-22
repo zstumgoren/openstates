@@ -1,0 +1,47 @@
+turkeyvulture
+==============
+
+To get started:
+
+1) install the other requirements:
+
+    pip install -r experimental/turkeyvulture/requirements.txt
+
+2) build_index.py needs to use ntlk's stopwords, which annoyingly requires downloading the english corpus they're derived from:
+
+    python
+    import nltk
+    nltk.download()
+
+Then you just download all, or if less lazy, you can selectively download.
+
+Then build the index:
+
+    cd experimental/turkeyvulture
+    python build_index.py ../../site/media/js/turkeyvulture/index
+
+NOTE:
+To rebuild the templates, you need jsonjinja:
+
+    git clone https://github.com/mitsuhiko/jsonjinja.git
+    cd jsonjinja
+    python setup.py install
+
+Then, to rebuild the templates:
+
+    cd experimental/turkeyvulture
+    python js.py > ../../site/media/js/turkeyvulture/templates.js
+
+
+Further Improvements
+=======================
+
+These are things that would be good if we decide to use this:
+
+- Highlight word stem/tail combinations
+- limit number of records displayed (sometimes 70 committees show up)
+- when turkey box is open and gets clicked, moving the mouse off of
+  the turkey box should result in it disappearing
+- search/query multiword searches (right now, treats input as a single string)
+- add ability to navigate inside turkey box with arrow keys
+- If a single result is shown, enter should go to that instead of triggering a search.

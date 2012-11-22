@@ -1,0 +1,28 @@
+<div class='suggest-legislators' class="clear">
+    <hr/>
+    <h4 class='suggest-heading'>Legislators ({{count}})</h4>
+    <ul>
+
+    {% if objects.upper %}
+        <strong>Upper</strong>
+        {% for leg in objects.upper %}
+            <li class="suggest-item">
+            <span>
+                <a href='/{{leg.state}}/legislators/{{leg._id}}/'>{{ leg.full_name }}</a>
+            </span> ({{leg.party}}—{{leg.district}})
+            </li>
+        {% endfor %}
+    {% endif %}
+
+    {% if objects.lower %}
+        <strong>Lower</strong>
+        {% for leg in objects.lower %}
+            <li class="suggest-item">
+            <span>
+                <a href='/{{leg.state}}/legislators/{{leg._id}}/'>{{ leg.full_name }}</a>
+            </span> ({{leg.party}}—{{leg.district}})
+            </li>
+        {% endfor %}
+    {% endif %}
+    </ul>
+</div>
