@@ -5,11 +5,6 @@ $(document).ready(function() {
         var stemmer = new PorterStemmer();
         var body = $('body');
 
-        $.getJSON(vsprintf('/media/js/turkeyvulture/index/%s.json', [abbr]), function(data){
-            jsindex.index = data;
-            console.log(vsprintf('/media/js/turkeyvulture/index/%s.json', [abbr]));
-            });
-
         // If js is enabled, suppress the browser's
         // autocomplete.
         var id_q = $("#id_q");
@@ -32,51 +27,31 @@ $(document).ready(function() {
             query: function(w){
 
                 // Stem the word.
-                w = stemmer.stemWord(w.toLowerCase());
+                var stem = stemmer.stemWord(w.toLowerCase()),
+                    url = vsprintf('/media/js/turkeyvulture/build/index/%s/%s', [abbr, stem]),
+                    res = {};
 
-                // The word and stem ids.
-                var word_id = this.index.stem2id[w];
-                var stem_id = this.index.stem2id[w];
+                $.ajaxSetup({async: false});
+                $.getJSON(url, function(results){
+                    _.each(['person', 'committee'], function(k){
 
-                // Query the index for a list of ids with
-                // data that satisfy our query.
-                var results = this.index.index[stem_id];
-                objects = this.index.objects;
+                        // Regroup the objects by chamber.
+                        results[k] = _.groupBy(results[k], 'chamber');
+                        if (results[k] === undefined){
+                            results[k] = [];
+                            }
+                        });
 
-                // Query the object store to retrieve the full
-                // record associated with each id.
-                results = _.map(results, function(id){
-                    return objects[id];
-                    });
-
-                // Regroup the objects by type.
-                results = _.groupBy(results, '_type');
-
-                // results.person = _.groupBy(results.person, 'chamber');
-                // results.committee = _.groupBy(results.committee, 'chamber');
-
-                // Replace undefined with list, mainly to play
-                // nice with the template renderer, and also because
-                // of my weaksauce javascript skills.
-                _.each(['person', 'committee'], function(k){
-
-                    // Regroup the objects by chamber.
-                    results[k] = _.groupBy(results[k], 'chamber');
-                    if (results[k] === undefined){
-                        results[k] = [];
-                        }
-                    });
-
-                // Regroup the regrouped objects by chamber.
-                //results.person =
-                return results;
-                },
+                    res.results = results;
+                });
+                $.ajaxSetup({async: true});
+                return res['results'];
+            },
 
             update: function(w){
 
                 // Query the index.
                 var results = this.query(w);
-
                 var column_count = 0;
                 var columns = {};
                 var template_names = {};

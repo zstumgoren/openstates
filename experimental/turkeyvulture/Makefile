@@ -11,6 +11,6 @@ clean:
 
 build:
 	python js.py > build/templates.js
+	python build_index.py ca
 	mkdir -p build/index
-	python build_index.py ca > build/index/ca.json
 	cp -R build ../../site/media/js/turkeyvulture
