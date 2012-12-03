@@ -11,7 +11,8 @@ clean:
 
 build:
 	python js.py > build/templates.js
-	python build_index.py ca
-	for abbr in `ls ../../openstates`; do python build_index.py $abbr ; done
 	mkdir -p build/index
-	cp -R build ../../site/media/js/turkeyvulture
+	python build_index.py all
+	mkdir -p ../../site/media/js/turkeyvulture/build
+	cp -R build/index ../../site/media/js/turkeyvulture/build
+	cp -R build/assets/* ../../site/media/js/turkeyvulture/

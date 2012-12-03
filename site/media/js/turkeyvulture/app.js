@@ -52,6 +52,11 @@ $(document).ready(function() {
 
                 // Query the index.
                 var results = this.query(w);
+
+                // If there were no results, use a dummy result.
+                if (results === undefined) {
+                    results = {person: [], committee: []};
+                }
                 var column_count = 0;
                 var columns = {};
                 var template_names = {};

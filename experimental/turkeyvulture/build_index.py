@@ -76,4 +76,11 @@ def build_index(state):
 
 if __name__ == '__main__':
     import sys
-    build_index(sys.argv[1])
+    abbr = sys.argv[1]
+    if abbr == "all":
+        for meta in db.metadata.find():
+            abbr = meta['_id']
+            logger.info('Generating index for %r' % abbr)
+            build_index(abbr)
+    else:
+        build_index(sys.argv[1])
