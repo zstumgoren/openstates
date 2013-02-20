@@ -6,7 +6,11 @@ from billy.scrape.bills import BillScraper, Bill
 from billy.scrape.votes import Vote
 import lxml.html
 
+from . import affected_code
+
+
 BASE_URL = 'http://lis.virginia.gov'
+
 
 class VABillScraper(BillScraper):
     jurisdiction = 'va'
@@ -72,7 +76,6 @@ class VABillScraper(BillScraper):
             # get bills from page
             self.get_page_bills(link.text, link.get('href'))
 
-
     def scrape(self, chamber, session):
         self.user_agent = 'openstates +mozilla'
         # internal id for the session, store on self so all methods have access
@@ -118,8 +121,8 @@ class VABillScraper(BillScraper):
                     self.scrape_bill_details(bill_url, bill)
                     bill['subjects'] = self.subject_map[bill_id]
                     bill.add_source(bill_url)
+                    self.get_affected_code(bill)
                     self.save_bill(bill)
-
 
     def scrape_bill_details(self, url, bill):
         html = self.urlopen(url, retry_on_404=True)
@@ -243,3 +246,6 @@ class VABillScraper(BillScraper):
         map(vote.other, self.split_vote(absts))
         # don't count not voting as anything?
         #map(vote.other, self.split_vote(no_votes))
+
+    def get_affected_code(self, bill):
+        affected_code.Extractor().get_graph(bill)
