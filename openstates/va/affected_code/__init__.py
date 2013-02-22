@@ -1,7 +1,9 @@
+# -*- coding: utf-8 -*-
 import re
 import lxml.html
 
 from tater.core import parse
+from tater.tokentype import Token as t
 
 from . import extractor
 from .ast_ import Start
@@ -15,15 +17,26 @@ class Extractor(extractor.Base):
 
     def iter_blurbs(self, bill):
         html = self.latest_version_data(bill)
+        if '<h4>Sorry, your query could not be processed.</h4>' in html:
+            raise extractor.ExtractionError('Got query error from server.')
         doc = lxml.html.fromstring(html)
         blurb = doc.xpath('//div[@id="mainC"]//i')[0].text_content()
         blurb = re.sub(r'\s+', ' ', blurb)
         yield blurb.strip()
 
-    def analyze(self, blurb):
+    def analyze(self, blurb, bill):
+        #blurb = 'A BILL to amend and reenact §§ 6.2-303, 6.2-312, 6.2-1501, 6.2-2107, 59.1-200, and 59.1-203 of the Code of Virginia and to repeal Chapter 18 (§§ 6.2-1800 through 6.2-1829) of Title 6.2 of the Code of Virginia, relating to payday lending.'
         toks = list(self.tokenizer.tokenize(blurb))
         import pprint;pprint.pprint(toks)
         print blurb
+        print bill['bill_id']
         tree = parse(Start, iter(toks))
         tree.printnode()
-        import pdb; pdb.set_trace()
+        return tree
+        # import pdb; pdb.set_trace()
+
+    def get_source_id(self, source):
+        return {
+            t.Source.VACode: 'code',
+            t.SessionLaws.Name: 'session_laws',
+            }[source.get_token()]

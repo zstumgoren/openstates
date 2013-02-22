@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from tater.node import Node, matches, matches_subtypes
 from tater.tokentype import Token
 from tater.common import HasSubdivisions
@@ -6,23 +7,38 @@ from tater.common import HasSubdivisions
 t = Token
 
 
-class Start(Node):
+class Base(Node):
+    def first_token(self):
+        return self.items[0][1]
+
+    def first_text(self):
+        return self.items[0][2]
+
+
+class Start(Base):
     @matches(t.Type)
     def handle_bill(self, *items):
         return self.ascend(Bill, items, related=False)
 
 
-class Bill(Node):
+class Bill(Base):
 
     @matches_subtypes(t.Amend)
     def amend(self, *items):
         return self.descend(Amend, items)
 
+    @matches(t.Repeal)
+    def repeal(self, *items):
+        return self.descend(Repeal, items)
 
-class Source(Node):
+
+class Source(Base):
     # @matches(t.Division)
     # def handle_division(self, *items):
     #     return self.descend(Division, items)
+
+    def get_token(self):
+        return self.items[0][1]
 
     @matches(t.Semicolon)
     def handle_sem(self, *items):
@@ -30,11 +46,11 @@ class Source(Node):
         return self.pop()
 
 
-class SessionLaw(Node):
+class SessionLaw(Base):
     pass
 
 
-class Enumeration(HasSubdivisions):
+class Enumeration(Base, HasSubdivisions):
     @matches(t.Enumeration)
     def handle_enumeration(self, *items):
         'Add it as a sibling.'
@@ -43,20 +59,43 @@ class Enumeration(HasSubdivisions):
     @matches(t.A, t.Division, t.Numbered)
     def handle_division_numbered(self, *items):
         _, div, _ = items
-        return self.descend(Division, div)
+        return self.descend(Division, [div])
 
     @matches(t.Of, t.Division, t.Enumeration)
     def handle_division_of(self, *items):
         '''Insert this division and enumeration above this
         enumeration and its parent division.'''
         _, div, enum = items
-        enum = self.parent.swap(Enumeration, enum)
-        div = enum.swap(Division, div)
+        enum = self.parent.swap(Enumeration, [enum])
+        div = enum.swap(Division, [div])
         # And resume where we left off.
         return self
 
+    @matches(t.Of, t.OrdinalEnactment)
+    def handle_ordinal_enactment(self, *items):
+        '''Explicitly assume these away for now.
 
-class Division(Node):
+        See 2013 SB 754: "An Act to amend and reenact § 2 of
+        the first enactment of Chapters 207..."
+        '''
+        return self
+
+    @matches_subtypes(t.Qualification)
+    def handle_qualification(self, *items):
+        return self.extend(items)
+
+    @matches_subtypes(t.And, t.Qualification)
+    def handle_qualification_and(self, *items):
+        'and as it may become effective'
+        return self.extend(items[1:])
+
+    @matches(t.EmbeddedRange)
+    def hanble_embedded_range(self, *items):
+        'Assume away "Chapter 18 (§§ 6.2-1800 through 6.2-1829)"'
+        return self
+
+
+class Division(Base):
 
     @matches(t.And)
     def skip_and(self, *items):
@@ -75,7 +114,7 @@ class Division(Node):
         return self
 
 
-class Change(Node):
+class Change(Base):
 
     @matches(t.And)
     def skip_and(self, *items):
@@ -106,8 +145,16 @@ class Change(Node):
 
     @matches(t.Of, t.SessionLaws.Name, t.SessionLaws.Year)
     def handle_session_law(self, *items):
-        _, name, year = items
         self.swap(Source, items[1:])
+        return self
+
+    @matches(t.Of, t.OrdinalEnactment)
+    def handle_ordinal_enactment(self, *items):
+        '''Explicitly assume these away for now.
+
+        See 2013 SB 754: "An Act to amend and reenact § 2 of
+        the first enactment of Chapters 207..."
+        '''
         return self
 
 
@@ -115,7 +162,7 @@ class Amend(Change):
     'Represents modification of an existing provision.'
     @matches(t.ByAdding)
     def handle_byadding(self, *items):
-        return self.replace(Add, *items, transfer=True)
+        return self.replace(Add, items, transfer=True)
 
 
 class Add(Change):
@@ -123,9 +170,13 @@ class Add(Change):
     @matches(t.ByAdding)
     def handle_byadding(self, *items):
         'We hit another ByAdding clause in a comma-separated series.'
-        return self.parent.descend(Add, *items)
+        return self.parent.descend(Add, items)
 
     @matches(t.A, t.Division, t.Numbered)
     def handle_division_numbered(self, *items):
         _, div, _ = items
-        return self.descend(Division, div)
+        return self.descend(Division, [div])
+
+
+class Repeal(Change):
+    pass

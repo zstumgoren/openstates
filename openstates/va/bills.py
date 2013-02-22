@@ -248,4 +248,11 @@ class VABillScraper(BillScraper):
         #map(vote.other, self.split_vote(no_votes))
 
     def get_affected_code(self, bill):
-        affected_code.Extractor().get_graph(bill)
+        try:
+            data = affected_code.Extractor().serializable(bill)
+        except affected_code.extractor.ExtractionError as e:
+            self.logger.warning("Couldn't extract affected code: %r" % e)
+            return
+
+        # lol
+        bill['affected_code'] = data
