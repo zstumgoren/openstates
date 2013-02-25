@@ -149,6 +149,7 @@ class Change(Base):
         return self
 
     @matches(t.Of, t.OrdinalEnactment)
+    @matches(t.OrdinalEnactment, t.Of)
     def handle_ordinal_enactment(self, *items):
         '''Explicitly assume these away for now.
 

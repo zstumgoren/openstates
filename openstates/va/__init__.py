@@ -61,9 +61,13 @@ metadata = {
                                   '1998 Special Session I', '1997 Session',
                                   '1996 Session', '1995 Session',
                                   '1994 Session', '1994 Special Session I',
-                                  '1994 Special Session II']
+                                  '1994 Special Session II'],
 
+    'laws': {
+        'code': {'display_name': 'Code of Virginia'},
+        }
 }
+
 
 def session_list():
     from billy.scrape.utils import url_xpath

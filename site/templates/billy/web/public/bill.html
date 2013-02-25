@@ -80,6 +80,11 @@
                         {% endfor %}
                 </dd>
                 {% endif %}
+
+                {% if bill|plusfield:"affected_code" %}
+                    {% include affected_code_template %}
+                {% endif %}
+
                 {% if bill.type|length > 1 %}
                 <dt class="h6 clear contentBottom">{% trans "Additional Bill Types:" %}</dt>
                 <dd class="clear">

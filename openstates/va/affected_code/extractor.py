@@ -65,6 +65,9 @@ class Base(object):
         return data
 
     def iter_graphs(self, bill):
+        '''Iterate over the impact clauses found in the bill_id
+        and parse each one into an AST.
+        '''
         for impact in self.iter_blurbs(bill):
             yield Graph(self.analyze(impact, bill), extractor=self)
 
@@ -77,6 +80,8 @@ class Base(object):
         for graph in self.iter_graphs(bill):
             if data is None:
                 data = graph.serializable()
+
+                # Add the details to the complete details list.
                 for details in data['details']:
                     if details not in seen_details:
                         seen_details.append(details)
@@ -84,10 +89,10 @@ class Base(object):
             else:
                 more_data = graph.serializable()
 
-                # Add combine their verbs.
+                # Combine their verbs.
                 data['verbs'] |= more_data['verbs']
 
-                # Combine their enum sets.
+                # Combine their enum_sets.
                 for key, enum_set in more_data.items():
                     data['enumerations'][key] |= enum_set
 
@@ -96,6 +101,7 @@ class Base(object):
                     if details not in seen_details:
                         seen_details.append(details)
 
+        # Replace non-serializable data types.
         data['enumerations'] = dict(
             (k, list(v)) for (k, v) in data['enumerations'].items())
         data['verbs'] = list(data['verbs'])
@@ -155,11 +161,10 @@ class Graph(object):
                          'source_id': 'code'}]
         }
         '''
-        visitor = NodeVisitor(self.graph, self.extractor)
-        visitor.visit()
+        visitor = NodeVisitor(self.extractor)
+        visitor.visit(self.graph)
         data = visitor.data
         return data
-
 
 
 def get_supernodes(node):
@@ -191,14 +196,42 @@ def get_supernodes(node):
     return path[::-1]
 
 
-class NodeVisitor(object):
+class _MethodDict(dict):
+    'Dict for caching visitor methods.'
+    def __init__(self, visitor):
+        self.visitor = visitor
+
+    def __missing__(self, node):
+        name = node.__class__.__name__
+        try:
+            method = getattr(self.visitor, 'visit_' + name)
+        except AttributeError:
+            method = self.visitor.generic_visit
+        self[name] = method
+        return method
+
+
+class VisitorBase(object):
+
+    @CachedAttr
+    def _methods(self):
+        return _MethodDict(visitor=self)
+
+    def generic_visit(self, node):
+        for child in node.children:
+            self.visit(child)
+
+    def visit(self, node):
+        self._methods[node](node)
+        self.generic_visit(node)
+
+
+class NodeVisitor(VisitorBase):
     '''Visits the graph and emits serializable data.
     '''
-    # DEBUG = True
 
-    def __init__(self, node, extractor):
-
-        self.node = node
+    def __init__(self, extractor):
+        VisitorBase.__init__(self)
 
         # Keep a reference to the extractor.
         self.extractor = extractor
@@ -228,21 +261,6 @@ class NodeVisitor(object):
     @current_division.deleter
     def current_division(self):
         del self._current_division
-
-    def generic_visit(self, node):
-        for child in node.children:
-            self.visit(child)
-
-    def visit(self, node=None):
-        if node is None:
-            node = self.node
-        funcname = 'visit_' + node.__class__.__name__
-        if getattr(self, 'DEBUG', False):
-            self.extractor.logger.info(funcname)
-        method = getattr(self, funcname, None)
-        if method is not None:
-            method(node)
-        self.generic_visit(node)
 
     def finalize_entry(self):
         # Finalize the current entry.
@@ -299,6 +317,7 @@ class NodeVisitor(object):
         supernodes = get_supernodes(node)
         if supernodes:
             details['supernodes'] = supernodes
+        details['url'] = self.extractor.make_url(details)
         self.data['details'].append(details)
 
     def visit_Add(self, node):

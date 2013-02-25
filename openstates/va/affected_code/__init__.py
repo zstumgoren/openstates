@@ -26,17 +26,15 @@ class Extractor(extractor.Base):
 
     def analyze(self, blurb, bill):
         #blurb = 'A BILL to amend and reenact §§ 6.2-303, 6.2-312, 6.2-1501, 6.2-2107, 59.1-200, and 59.1-203 of the Code of Virginia and to repeal Chapter 18 (§§ 6.2-1800 through 6.2-1829) of Title 6.2 of the Code of Virginia, relating to payday lending.'
-        toks = list(self.tokenizer.tokenize(blurb))
-        import pprint;pprint.pprint(toks)
-        print blurb
-        print bill['bill_id']
-        tree = parse(Start, iter(toks))
-        tree.printnode()
-        return tree
-        # import pdb; pdb.set_trace()
+        toks = self.tokenizer.tokenize(blurb)
+        return parse(Start, iter(toks))
 
     def get_source_id(self, source):
         return {
             t.Source.VACode: 'code',
             t.SessionLaws.Name: 'session_laws',
             }[source.get_token()]
+
+    def make_url(self, details_dict):
+        if details_dict.get('verb') != 'add':
+            return 'http://vacode.org/%s/' % details_dict['enum']
