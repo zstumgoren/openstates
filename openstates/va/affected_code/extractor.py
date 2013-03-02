@@ -6,6 +6,8 @@ from copy import copy
 
 import scrapelib
 from tater.tokentype import Token as t
+from tater.visit import VisitorBase
+
 
 from .utils import CachedAttr
 
@@ -28,7 +30,7 @@ class Base(object):
         # requests settings
         'timeout': 5.0,
         'follow_robots': False,
-        }
+    }
 
     @CachedAttr
     def datadir(self):
@@ -194,36 +196,6 @@ def get_supernodes(node):
         path.append(segment[::-1])
 
     return path[::-1]
-
-
-class _MethodDict(dict):
-    'Dict for caching visitor methods.'
-    def __init__(self, visitor):
-        self.visitor = visitor
-
-    def __missing__(self, node):
-        name = node.__class__.__name__
-        try:
-            method = getattr(self.visitor, 'visit_' + name)
-        except AttributeError:
-            method = self.visitor.generic_visit
-        self[name] = method
-        return method
-
-
-class VisitorBase(object):
-
-    @CachedAttr
-    def _methods(self):
-        return _MethodDict(visitor=self)
-
-    def generic_visit(self, node):
-        for child in node.children:
-            self.visit(child)
-
-    def visit(self, node):
-        self._methods[node](node)
-        self.generic_visit(node)
 
 
 class NodeVisitor(VisitorBase):
