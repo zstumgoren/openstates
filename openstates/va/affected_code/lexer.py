@@ -1,12 +1,10 @@
 # -*- coding: utf-8 -*-
-import logging
-
 from tater.core import RegexLexer, Rule, bygroups
 from tater.tokentype import Token
 from tater.common import re_divisions
 
 
-class Tokenizer(RegexLexer):
+class Lexer(RegexLexer):
     # DEBUG = logging.INFO
 
     r = Rule
@@ -19,7 +17,7 @@ class Tokenizer(RegexLexer):
     tokendefs = {
         'root': [
             r(t.Type, '(?i)An? (BILL|Act)', 'impact'),
-            ],
+        ],
 
         'impact': [
             r(t.Junk, 'to'),
@@ -29,7 +27,7 @@ class Tokenizer(RegexLexer):
             r(t.Repeal, 'repeal', 'enumeration'),
             r(t.Semicolon, ';'),
             r(t.Source.VACode, 'the Code of Virginia', 'opcodes'),
-            ],
+        ],
 
         'enumeration': [
             r(t.SecSymbol, r'[\xa7]+'),
@@ -41,6 +39,7 @@ class Tokenizer(RegexLexer):
               'the (Acts of Assembly) of (\d{4})'),
             r(t.Numbered, 'numbered'),
             r(t.Of, 'of'),
+            r(t.Junk, 'as amended'),
             r(t.OrdinalEnactment, 'the (first|second|third) enactment'),
             r(t.Division, re_divisions),
             r(t.Qualification.May, 'as it may become effective'),
@@ -52,12 +51,13 @@ class Tokenizer(RegexLexer):
 
             # r(t.RelatingTo, 'relating to .+'),
             # r(t.WhichProvided, 'which provided .+')
-            ],
+        ],
 
         'opcodes': [
             r(t.ByAdding, 'by adding'),
             r(t.Division, re_divisions, 'enumeration'),
             r(t.In, 'in'),
+            r(t.A, 'an'),
             r(t.A, 'a'),
-            ]
-        }
+        ]
+    }

@@ -174,7 +174,6 @@ class VABillScraper(BillScraper):
                 #vote.validate()
                 bill.add_vote(vote)
 
-
             # categorize actions
             for pattern, atype in self._action_classifiers:
                 if re.match(pattern, action):
@@ -185,7 +184,6 @@ class VABillScraper(BillScraper):
             # if matched a 'None' atype, don't add the action
             if atype:
                 bill.add_action(actor, action, date, type=atype)
-
 
     def fetch_sponsors(self, bill):
         url = "http://lis.virginia.gov/cgi-bin/legp604.exe?%s+mbr+%s" % (
@@ -250,9 +248,9 @@ class VABillScraper(BillScraper):
     def get_affected_code(self, bill):
         try:
             data = affected_code.Extractor().serializable(bill)
-        except affected_code.extractor.ExtractionError as e:
+        except affected_code.base.ExtractionError as e:
             self.logger.warning("Couldn't extract affected code: %r" % e)
             return
 
-        # lol
         bill['affected_code'] = data
+

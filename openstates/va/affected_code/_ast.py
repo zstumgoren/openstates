@@ -1,10 +1,7 @@
 # -*- coding: utf-8 -*-
 from tater.node import Node, matches, matches_subtypes
-from tater.tokentype import Token
+from tater.tokentype import Token as t
 from tater.common import HasSubdivisions
-
-
-t = Token
 
 
 class Base(Node):
