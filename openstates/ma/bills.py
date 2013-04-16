@@ -50,11 +50,6 @@ class UrlData(object):
     def __repr__(self):
         return 'UrlData(url=%r)' % self.url
 
-    def __iter__(self):
-        for key in dict.__getattr__(self, 'keys')():
-            if key not in ('_scraper', '_urls'):
-                yield key
-
     @Cached
     def text(self):
         text = self.scraper.urlopen(self.url)
