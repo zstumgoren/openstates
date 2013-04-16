@@ -88,6 +88,9 @@ class UrlsMeta(type):
     using the Urls.validate decorator.
     '''
     def __new__(meta, name, bases, attrs):
+        '''Just aggregates the validator methods into a defaultdict
+        and stores them on cls._validators.
+        '''
         validators = collections.defaultdict(set)
         for attr in attrs.values():
             if hasattr(attr, 'validates'):
@@ -358,6 +361,9 @@ class MABillContext(BillContext):
     urls_class = MA_Urls
 
     def saveable(self):
+        '''Better would be if there were a decorator, and if a method
+        was decorated, it would run before the savable thing was returned.
+        '''
         self.add_basics()
         self.add_actions()
         self.add_sponsors()
@@ -425,11 +431,10 @@ class MABillContext(BillContext):
             self.bill.add_sponsor('cosponsor', petitioner)
 
     def add_versions(self):
-        doc = self.urls.detail.doc
         # sometimes html link is just missing
         bill_text_url = (
-            doc.xpath('//a[contains(@href, "BillHtml")]/@href') or
-            doc.xpath('//a[contains(@href, "Bills/PDF")]/@href')
+            self.doc.xpath('//a[contains(@href, "BillHtml")]/@href') or
+            self.doc.xpath('//a[contains(@href, "Bills/PDF")]/@href')
         )
         if bill_text_url:
             if 'PDF' in bill_text_url[0]:
@@ -468,16 +473,19 @@ class Term188(TimespanScraper):
     jurisdiction = 'ma'
 
     # Will be used if the scrape occurs in the 188th term.
+    # If the same scraper works as for last term, updating this thing
+    # just means adding the new term to this list.
     terms = ['188']
 
     # Optionally restrict it to sessions.
     sessions = ['188th']
 
-    # This one is used for both chambers.
+    # None is used for both chambers, else 'upper' or 'lower' to
+    # restrict which chamber this will be used for.
     chamber = None
 
     # Whenever I can't think of a name for something, it gets
-    # called foo_context
+    # called foo_context.
     bill_context = MABillContext
 
     def generate_ids(self):
