@@ -126,55 +126,6 @@ $(document).ready(function() {
         {% endif %}
 
 
-<!-- Committee -->
-        {% if favorites.has_committees %}
-        <div class="module">
-            <h3 class="moduleTitle colLt">{% trans "Committees" %}</h3>
-            {% notification_preference 'committee' profile %}
-           <table class="withFilter">
-              <thead>
-                <tr class="favHead">
-
-                  <th>{% trans "State" %}</th>
-                  <th>{% trans "Chamber" %}</th>
-                  <th>{% trans "Name" %}</th>
-                  <th>{% trans "Members" %}</th>
-                  <th class="invisible">Favorite</th>
-                </tr>
-              </thead>
-              {% for obj in committees %}
-              <tr class="{% cycle odd,even %} textLt">
-
-
-                <td>{{ obj.metadata.name }}</td>
-                <td>{{ obj.chamber_name }}</td>
-                <td><a href="{{ obj.get_absolute_url }}">{{ obj.display_name }}</a></td>
-                <td>
-                  {% if not obj.members %}
-                      [{% trans "data not yet available" %}]
-                  {% else %}
-                    <ul class="inlineList noSpace">
-                    {% for member, legislator_object in obj.members_objects %}
-                      {% if member.leg_id %}
-                        <li>
-                            <a class="tip withTip" href="{{legislator_object.get_absolute_url}}">{{legislator_object.display_name}}{% if not forloop.last %},{% else %}{% endif %}</a>
-                        </li>
-                      {% else %}
-                      <li>
-                        <span class="tip withTip">{{ member.name }}{% if not forloop.last %},{% else %}{% endif %}</span>
-                      </li>
-                      {% endif %}
-                    {% endfor %}
-                    </ul>
-                  {% endif %}
-                </td>
-                <td class="followBox">{% favorite_short obj.id 'committee' obj.metadata.abbr 'is_favorite' %}</td>
-              </tr>
-              {% endfor %}
-            </table>
-        </div>
-        {% endif %}
-
 <!-- Searches -->
         {% if favorites.has_searches %}
         <div class="module">
