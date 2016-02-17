@@ -30,14 +30,26 @@ class OKEventScraper(EventScraper):
 
             lines = filter(None, [x.strip() for x in data.splitlines()])
 
-            time_ = re.search(r'^\s*TIME:\s+(.+?)\s+\x96', data, re.M).group(1)
-            time_ = time_.replace('a.m.', 'AM').replace('p.m.', 'PM')
-            time_ = time.strptime(time_, '%I:%M %p')
+            print lines
+            time_ = time.strptime('5:00 pm', '%I:%M %p')
+            
+            #if re.search(r'^\s*TIME:\s+(.+?)\s+\x96', data, re.M):
+            if re.search(r'^\s*TIME:\s+AFTER\s+SESSION', data, re.M):
+                print "TIM MATCH"
+                time_ = time.strptime('5:00 pm',  '%I:%M %p')
+            elif re.search(r'^\s*TIME:\s+(.+?)\s+\x96', data, re.M):
+                time_ = re.search(r'^\s*TIME:\s+(.+?)\s+\x96', data, re.M).group(1)
+                time_ = time_.replace('a.m.', 'AM').replace('p.m.', 'PM')
+                print "TIME : %s" % time_
+                time_ = time.strptime(time_, '%I:%M %p')
+            else:
+                self.warning('Unable to parse time for: %s', lines[0])
+                
             when += datetime.timedelta(hours=time_.tm_hour, minutes=time_.tm_min)
 
             title = lines[0]
 
-            where = re.search(r'^\s*PLACE:\s+(.+)', data, re.M).group(1)
+            where = re.search(r'^\s*LOCATION:\s+(.+)', data, re.M).group(1)
             where = where.strip()
 
             event = Event(session, when, 'committee:meeting', title,
