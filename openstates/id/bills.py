@@ -52,7 +52,7 @@ _ACTIONS = (
      # but i guess we at least know that only committees report out
      (r'rpt out - rec d/p', "committee:passed:favorable"),
      (r'^rpt out', 'committee:passed'),
-
+     (r'^Introduced', 'bill:introduced'),
 
     (r'^Reported Signed by Governor', "governor:signed"),
     (r'^Signed by Governor', "governor:signed"),
