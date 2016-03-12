@@ -5,6 +5,7 @@ from billy.utils.fulltext import text_after_line_numbers
 from billy.scrape.utils import url_xpath
 from .bills import VABillScraper
 from .legislators import VALegislatorScraper
+from .events import VAEventScraper
 
 settings = {
     'SCRAPELIB_RPM': 40
