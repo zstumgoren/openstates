@@ -5,6 +5,8 @@ from .bills import NCBillScraper
 from .legislators import NCLegislatorScraper
 from .committees import NCCommitteeScraper
 from .votes import NCVoteScraper
+from .events import NCEventScraper
+
 
 metadata = dict(
     name='North Carolina',
