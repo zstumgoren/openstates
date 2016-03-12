@@ -33,28 +33,37 @@ class NCEventScraper(EventScraper):
                         when = datetime.datetime.strptime(start_day+' '+start_time, date_format)
 
                         meeting_type = 'committee:meeting'
-                        com_url = tds[1].xpath('.//a')[0].attrib['href']
-                        com_html = self.get(com_url).text
-                        com_doc = lxml.html.fromstring(com_html)
-                        com_title = com_doc.xpath('//div[@id="title"]')[0].text_content().strip()
-                        com_type = com_doc.xpath('//div[@class="titleSub"]')[0].text_content().strip()
-
-                        chambers = {
-                            "house" : "lower",
-                            "joint" : "joint",
-                            "senate" : "upper",
-                            "non-standing": "other"
-                        }
-
-                        com_chamber = "other"
-                        for key in chambers:
-                            if key in com_type.lower():
-                                com_chamber = chambers[key]
-
+                        
                         event = Event(session, when, meeting_type,
                                       subject, where)
-                        event.add_participant('host', com_title, 'committee',
+                                      
+                        if tds[1].xpath('count(.//a)') > 0:
+                            com_url = tds[1].xpath('.//a')[0].attrib['href']
+                            com_html = self.get(com_url).text
+                            com_doc = lxml.html.fromstring(com_html)
+                            com_title = com_doc.xpath('//div[@id="title"]')[0].text_content().strip()
+                            com_type = com_doc.xpath('//div[@class="titleSub"]')[0].text_content().strip()
+                            
+                            print com_type
+                            
+                            chambers = {
+                                "house" : "lower",
+                                "joint" : "joint",
+                                "senate" : "upper",
+                                "non-standing": "other"
+                            }
+
+                            com_chamber = "other"
+                            for key in chambers:
+                                if key in com_type.lower():
+                                    com_chamber = chambers[key]
+                            
+                            if 'Joint' in com_title:
+                                com_chamber = 'joint'
+                                
+                            event.add_participant('host', com_title, 'committee',
                                               chamber=com_chamber)
+                                              
                         event.add_source(url)
                         self.save_event(event)
                 else:
