@@ -14,15 +14,21 @@ from billy.scrape.votes import Vote
 from .models import CABill
 from .actions import CACategorizer
 
+import sys
+reload(sys)
+sys.setdefaultencoding('utf-8')
 
 SPONSOR_TYPES = {'LEAD_AUTHOR': 'primary',
                  'COAUTHOR': 'cosponsor',
                  'PRINCIPAL_COAUTHOR': 'primary'}
 
 def clean_title(s):
+    s = s.decode('iso-8859-1').encode('utf-8','ignore')
+    
     # replace smart quote characters
     s = s.replace(u'\xe2\u20ac\u201c', '-')
-
+    #s = s.replace(u'\xc3','a')
+    
     # Cesar Chavez e
     s = s.replace(u'\xc3\xa9', u'\u00E9')
     # Cesar Chavez a

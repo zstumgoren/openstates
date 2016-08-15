@@ -32,6 +32,7 @@ MYSQL_USER = os.environ.get('MYSQL_USER', MYSQL_USER)
 MYSQL_PASSWORD = getattr(settings, 'MYSQL_PASSWORD', '')
 MYSQL_PASSWORD = os.environ.get('MYSQL_PASSWORD', MYSQL_PASSWORD)
 
+#ftp://leginfo.public.ca.gov/pub/bill/
 BASE_URL = 'ftp://www.leginfo.ca.gov/pub/bill/'
 
 
