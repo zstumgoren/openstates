@@ -47,8 +47,13 @@ class NVEventsScraper(EventScraper):
         event_seperators = event_page.xpath('//div[@class="gradient-hr"]')
         
         for i, node in enumerate(event_seperators):
-            print i
             i = i + 1
+            print i
             #/*/p[count(preceding-sibling::divider)=1]
-            for event_fragment in event_page.xpath('//div[@class="gradient-hr"][%d]/preceding-sibling::div[contains(@class, "top-padding-xs") and count(preceding-sibling::div[@class="gradient-hr"])=1]' % i):
-                print event_fragment
+            for event_line in event_page.xpath('//div[@class="gradient-hr"][%d]/preceding-sibling::div[contains(@class, "top-padding-xs") and count(preceding-sibling::div[@class="gradient-hr"])=1]/text()' % i):
+                print event_line
+                #title = event_line.xpath('//div[@class="col-md-3"]/text()')
+                #print title.strip()
+                #content = event_line.xpath('//div[@class="col-md-9"]/text()')
+                #print content.strip()
+                print "\n"
