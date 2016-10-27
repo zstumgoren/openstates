@@ -33,10 +33,11 @@ _action_ids = (
 )
 
 _action_re = (
+    ('AMENDED AND REPORTED', ['committee:referred','amendment:passed'])
     ('REPORTED OUT', 'committee:referred'),
     ('ADOPTED', 'bill:passed'),
     ('HELD IN COMMITTEE', 'other'),
-    ('AMENDED', 'amendment:amended'),
+    ('AMENDED', 'amendment:passed'),
 )
 
 _committees = (
@@ -146,7 +147,7 @@ class VIBillScraper(BillScraper, LXMLMixin):
         
         bill_no = bill_page.xpath('//span[@id="ctl00_ContentPlaceHolder_BillNumberLabel"]/a/text()')
         if bill_no:
-            print bill_no[0]
+            bill_no = bill_no[0]
         else:
             self.error('Missing bill number {}'.format(bill_page_url))
             return False
@@ -159,23 +160,10 @@ class VIBillScraper(BillScraper, LXMLMixin):
             type='bill'
         )
         
-        bill_version = bill_page.xpath('//span[@id="ctl00_ContentPlaceHolder_BillNumberLabel"]/a/@href')
-        if bill_version:
-            bill.add_version(name=bill_no,
-                    url= 'http://www.legvi.org/vilegsearch/{}'.format(bill_version[0]),
-                    mimetype='application/pdf'
-            )
-            
-        bill_act = bill_page.xpath('//span[@id="ctl00_ContentPlaceHolder_ActNumberLabel"]/a')
-        if bill_act:
-            (act_title,) = bill_act[0].xpath('./text()')
-            (act_link,) = bill_act[0].xpath('./@href')
-            act_link = 'http://www.legvi.org/vilegsearch/{}'.format(act_link)
-            bill.add_document(name=act_title,
-                    url=act_link,
-                    mimetype='application/pdf'
-            )
-                
+        self.parse_versions(bill, bill_page, bill_no)
+        
+        self.parse_acts(bill, bill_page)
+        
         sponsors = bill_page.xpath('//span[@id="ctl00_ContentPlaceHolder_SponsorsLabel"]/text()')
         if sponsors:
             self.assign_sponsors(bill, sponsors[0], 'primary')
@@ -188,9 +176,29 @@ class VIBillScraper(BillScraper, LXMLMixin):
         
         self.parse_actions(bill, bill_page)
 
-        print bill
-        #self.save_bill(bill)
-        
+        #print bill
+        self.save_bill(bill)
+    
+    def parse_versions(self, bill, bill_page, bill_no):
+        bill_version = bill_page.xpath('//span[@id="ctl00_ContentPlaceHolder_BillNumberLabel"]/a/@href')
+        if bill_version:
+            bill.add_version(name=bill_no,
+                    url= 'http://www.legvi.org/vilegsearch/{}'.format(bill_version[0]),
+                    mimetype='application/pdf'
+            )
+    
+    def parse_acts(self, bill, bill_page):
+        bill_act = bill_page.xpath('//span[@id="ctl00_ContentPlaceHolder_ActNumberLabel"]/a')
+        if bill_act:
+            (act_title,) = bill_act[0].xpath('./text()')
+            act_title = 'Act {}'.format(act_title)
+            (act_link,) = bill_act[0].xpath('./@href')
+            act_link = 'http://www.legvi.org/vilegsearch/{}'.format(act_link)
+            bill.add_document(name=act_title,
+                    url=act_link,
+                    mimetype='application/pdf'
+            )
+    
     def clean_names(self, name_str):
         #Clean up the names a bit to allow for comma splitting
         name_str = re.sub(", Jr", " Jr.", name_str, flags=re.I)
@@ -221,24 +229,28 @@ class VIBillScraper(BillScraper, LXMLMixin):
             return datetime.datetime.strptime(date_str, '%m/%d/%y').date()
         
     def parse_actions(self, bill, bill_page):
-        # Each actor has 1+ fields for their actions
-        # Pull DATE - Action pairs out of text, and categorize the action
+        # Aside from the actions implied by dates, which are handled in parse_date_actions
+        # Each actor has 1+ fields for their actions, 
+        # Pull (DATE, Action) pairs out of text, and categorize the action
         for xpath,actor in _action_ids:
             actions = bill_page.xpath('//span[@id="{}"]/text()'.format(xpath))
             if actions:
-                for action_date, action_text in self.grouped(self.split_action(actions[0]),2):
+                for action_date, action_text in self.split_action(actions[0]):
                     bill.add_action(actor=actor,
                                 action=action_text,
                                 date=self.parse_date(action_date),
                                 type= self.categorize_action(action_text))
 
+                                
     def split_action(self, action_str):
+        # Turns 01/01/2015 ACTION1 02/02/2016 ACTION2 
+        # Into (('01/01/2015','ACTION NAME'),('02/02/2016','ACTION2'))
         actions = re.split('(\d{1,2}/\d{1,2}/\d{1,2})', action_str)
         #Trim out whitespace and leading/trailing dashes
         actions = [re.sub('^-\s+|^-|-$','',action.strip()) for action in actions]
         #Trim out empty list items from re.split
         actions = list(filter(None, actions))
-        return actions
+        return self.grouped(actions,2)
         
     def categorize_action(self, action):
         for pattern, types in _action_re:
