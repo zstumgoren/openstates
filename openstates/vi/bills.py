@@ -5,6 +5,7 @@ import sys
 
 import lxml.etree
 from lxml.etree import tostring
+from itertools import izip
 
 from billy.scrape.bills import Bill, BillScraper
 from billy.scrape.votes import Vote
@@ -13,7 +14,7 @@ from openstates.utils import LXMLMixin
 #Amendment
 _scrapable_types = ['Bill','Bill&Amend']
 
-_action_pairs = [
+_action_pairs = (
     ('ctl00_ContentPlaceHolder_DateIntroLabel','Introduced','bill:introduced'),
     ('ctl00_ContentPlaceHolder_DateRecLabel','Received','bill:filed'),
     ('ctl00_ContentPlaceHolder_DateAssignLabel','Assigned','other'),
@@ -22,7 +23,37 @@ _action_pairs = [
     ('ctl00_ContentPlaceHolder_DateAppGovLabel','Signed by Governor','governor:signed'),
     ('ctl00_ContentPlaceHolder_DateVetoedLabel','Vetoed','governor:vetoed'),
     ('ctl00_ContentPlaceHolder_DateOverLabel','Governor Veto Overriden','bill:veto_override:passed'),    
-]
+)
+
+_action_ids = (
+    ('ctl00_ContentPlaceHolder_ComActionLabel','upper'),
+    ('ctl00_ContentPlaceHolder_FloorActionLabel','upper'),
+    ('ctl00_ContentPlaceHolder_RulesActionLabel','upper'),
+    ('ctl00_ContentPlaceHolder_RemarksLabel','executive'),
+)
+
+_action_re = (
+    ('REPORTED OUT', 'committee:referred'),
+    ('ADOPTED', 'bill:passed'),
+    ('HELD IN COMMITTEE', 'other'),
+    ('AMENDED', 'amendment:amended'),
+)
+
+_committees = (
+    ('','COMMITTEE OF CULTURE, HISTORIC PRESERVATION, YOUTH & RECREATION'),
+    ('','COMMITTEE OF ECONOMIC DEVELOPMENT, AGRICULTURE & PLANNING'),
+    ('','COMMITTEE OF EDUCATION & WORKFORCE DEVELOPMENT'),
+    ('','COMMITTEE OF ENERGY & ENVIROMENTAL PROTECTION'),
+    ('COF','COMMITTEE OF FINANCE'),
+    ('COHHHS','COMMITTEE OF HEALTH, HOSPITAL & HUMAN SERVICES'),
+    ('','COMMITTEE OF HOMELAND SECURITY, PUBLIC SAFETY & JUSTICE'),
+    ('','COMMITTEE OF HOUSING, PUBLIC WORKS & WASTE MANAGMENT'),
+    ('','COMMITTEE OF RULES & JUDICIARY'),
+    ('','COMMITTEE OF THE WHOLE'),
+    ('','COMMITTEE ON GOVERNMENT SERVICES, CONSUMER AND VETERANS AFFAIRS'),
+    ('','Legislative Youth Advisory Counsel'),
+    ('','ZONING'),      
+)
 
 class VIBillScraper(BillScraper, LXMLMixin):
     jurisdiction = 'vi'
@@ -110,13 +141,15 @@ class VIBillScraper(BillScraper, LXMLMixin):
         if title:
             title = title[0]
         else:
-            self.warning('Missing bill title {}'.format(bill_page_url))    
+            self.warning('Missing bill title {}'.format(bill_page_url))  
+            return False  
         
         bill_no = bill_page.xpath('//span[@id="ctl00_ContentPlaceHolder_BillNumberLabel"]/a/text()')
         if bill_no:
             print bill_no[0]
         else:
             self.error('Missing bill number {}'.format(bill_page_url))
+            return False
                 
         bill = Bill(
             session=self.session,
@@ -125,6 +158,23 @@ class VIBillScraper(BillScraper, LXMLMixin):
             title=title,
             type='bill'
         )
+        
+        bill_version = bill_page.xpath('//span[@id="ctl00_ContentPlaceHolder_BillNumberLabel"]/a/@href')
+        if bill_version:
+            bill.add_version(name=bill_no,
+                    url= 'http://www.legvi.org/vilegsearch/{}'.format(bill_version[0]),
+                    mimetype='application/pdf'
+            )
+            
+        bill_act = bill_page.xpath('//span[@id="ctl00_ContentPlaceHolder_ActNumberLabel"]/a')
+        if bill_act:
+            (act_title,) = bill_act[0].xpath('./text()')
+            (act_link,) = bill_act[0].xpath('./@href')
+            act_link = 'http://www.legvi.org/vilegsearch/{}'.format(act_link)
+            bill.add_document(name=act_title,
+                    url=act_link,
+                    mimetype='application/pdf'
+            )
                 
         sponsors = bill_page.xpath('//span[@id="ctl00_ContentPlaceHolder_SponsorsLabel"]/text()')
         if sponsors:
@@ -134,16 +184,12 @@ class VIBillScraper(BillScraper, LXMLMixin):
         if cosponsors:
             self.assign_sponsors(bill, cosponsors[0], 'cosponsor')
 
-        #introduced = bill_page.xpath('//span[@id="ctl00_ContentPlaceHolder_DateIntroLabel"]/text()')
-        #if introduced:
-        #    bill.add_action(actor='upper',
-        #                    action='Introduced',
-        #                    date=self.parse_date(introduced[0]),
-        #                    type="bill:introduced")
-
         self.parse_date_actions(bill, bill_page)
+        
+        self.parse_actions(bill, bill_page)
 
-        self.save_bill(bill)
+        print bill
+        #self.save_bill(bill)
         
     def clean_names(self, name_str):
         #Clean up the names a bit to allow for comma splitting
@@ -160,14 +206,48 @@ class VIBillScraper(BillScraper, LXMLMixin):
     def parse_date_actions(self, bill, bill_page):
         # There's a set of dates on the bill page denoting specific actions
         # These are mapped in _action_pairs above
-        for pair in _action_pairs:
-            action_date = bill_page.xpath('//span[@id="{}"]/text()'.format(pair[0]))
+        for xpath, action_name, action_type in _action_pairs:
+            action_date = bill_page.xpath('//span[@id="{}"]/text()'.format(xpath))
             if action_date:
                 bill.add_action(actor='upper',
-                                action=pair[1],
+                                action=action_name,
                                 date=self.parse_date(action_date[0]),
-                                type=pair[2])
+                                type=action_type)
     
     def parse_date(self, date_str):
-        return datetime.datetime.strptime(date_str, '%m/%d/%Y').date()
-                                
+        try: 
+            return datetime.datetime.strptime(date_str, '%m/%d/%Y').date()
+        except ValueError:
+            return datetime.datetime.strptime(date_str, '%m/%d/%y').date()
+        
+    def parse_actions(self, bill, bill_page):
+        # Each actor has 1+ fields for their actions
+        # Pull DATE - Action pairs out of text, and categorize the action
+        for xpath,actor in _action_ids:
+            actions = bill_page.xpath('//span[@id="{}"]/text()'.format(xpath))
+            if actions:
+                for action_date, action_text in self.grouped(self.split_action(actions[0]),2):
+                    bill.add_action(actor=actor,
+                                action=action_text,
+                                date=self.parse_date(action_date),
+                                type= self.categorize_action(action_text))
+
+    def split_action(self, action_str):
+        actions = re.split('(\d{1,2}/\d{1,2}/\d{1,2})', action_str)
+        #Trim out whitespace and leading/trailing dashes
+        actions = [re.sub('^-\s+|^-|-$','',action.strip()) for action in actions]
+        #Trim out empty list items from re.split
+        actions = list(filter(None, actions))
+        return actions
+        
+    def categorize_action(self, action):
+        for pattern, types in _action_re:
+            if re.findall(pattern, action, re.IGNORECASE):
+                return types
+        return 'other'    
+
+        
+    def grouped(self, iterable, n):
+        # Return a list grouped by n
+        #"s -> (s0,s1,s2,...sn-1), (sn,sn+1,sn+2,...s2n-1), (s2n,s2n+1,s2n+2,...s3n-1), ..."
+        return izip(*[iter(iterable)]*n)    
