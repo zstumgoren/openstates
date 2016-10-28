@@ -11,8 +11,8 @@ from billy.scrape.bills import Bill, BillScraper
 from billy.scrape.votes import Vote
 from openstates.utils import LXMLMixin
 
-#Amendment
-_scrapable_types = ['Bill','Bill&Amend']
+#Skip Amendment for now, data is included in Bill entry
+_scrapable_types = ['Bill','Bill&Amend','CMZ Permit','Other','Resolution']
 
 _action_pairs = (
     ('ctl00_ContentPlaceHolder_DateIntroLabel','Introduced','bill:introduced'),
@@ -22,7 +22,7 @@ _action_pairs = (
     ('ctl00_ContentPlaceHolder_DateToGovLabel','Sent to Governor','governor:received'),
     ('ctl00_ContentPlaceHolder_DateAppGovLabel','Signed by Governor','governor:signed'),
     ('ctl00_ContentPlaceHolder_DateVetoedLabel','Vetoed','governor:vetoed'),
-    ('ctl00_ContentPlaceHolder_DateOverLabel','Governor Veto Overriden','bill:veto_override:passed'),    
+    ('ctl00_ContentPlaceHolder_DateOverLabel','Governor Veto Overridden','bill:veto_override:passed'),    
 )
 
 _action_ids = (
@@ -33,7 +33,7 @@ _action_ids = (
 )
 
 _action_re = (
-    ('AMENDED AND REPORTED', ['committee:referred','amendment:passed'])
+    ('AMENDED AND REPORTED', ['committee:referred','amendment:passed']),
     ('REPORTED OUT', 'committee:referred'),
     ('ADOPTED', 'bill:passed'),
     ('HELD IN COMMITTEE', 'other'),
@@ -41,24 +41,26 @@ _action_re = (
 )
 
 _committees = (
-    ('','COMMITTEE OF CULTURE, HISTORIC PRESERVATION, YOUTH & RECREATION'),
-    ('','COMMITTEE OF ECONOMIC DEVELOPMENT, AGRICULTURE & PLANNING'),
-    ('','COMMITTEE OF EDUCATION & WORKFORCE DEVELOPMENT'),
-    ('','COMMITTEE OF ENERGY & ENVIROMENTAL PROTECTION'),
+    ('COCHPY&R','COMMITTEE OF CULTURE, HISTORIC PRESERVATION, YOUTH & RECREATION'),
+    ('COEDA&P','COMMITTEE OF ECONOMIC DEVELOPMENT, AGRICULTURE & PLANNING'),
+    ('COE&WD','COMMITTEE OF EDUCATION & WORKFORCE DEVELOPMENT'),
+    ('HEALTH','COMMITTEE OF ENERGY & ENVIROMENTAL PROTECTION'),
     ('COF','COMMITTEE OF FINANCE'),
-    ('COHHHS','COMMITTEE OF HEALTH, HOSPITAL & HUMAN SERVICES'),
-    ('','COMMITTEE OF HOMELAND SECURITY, PUBLIC SAFETY & JUSTICE'),
-    ('','COMMITTEE OF HOUSING, PUBLIC WORKS & WASTE MANAGMENT'),
-    ('','COMMITTEE OF RULES & JUDICIARY'),
-    ('','COMMITTEE OF THE WHOLE'),
-    ('','COMMITTEE ON GOVERNMENT SERVICES, CONSUMER AND VETERANS AFFAIRS'),
+    ('COHHHS&VA','COMMITTEE OF HEALTH, HOSPITAL & HUMAN SERVICES'),
+    ('COHSJ&PS','COMMITTEE OF HOMELAND SECURITY, PUBLIC SAFETY & JUSTICE'),
+    ('PUBLICWRKS','COMMITTEE OF HOUSING, PUBLIC WORKS & WASTE MANAGMENT'),
+    ('RULJUD','COMMITTEE OF RULES & JUDICIARY'),
+    ('WHOLE','COMMITTEE OF THE WHOLE'),
+    ('GOVSERV','COMMITTEE ON GOVERNMENT SERVICES, CONSUMER AND VETERANS AFFAIRS'),
+    ('COGS&H','COMMITTEE ON GOVERNMENT SERVICES, CONSUMER AND VETERANS AFFAIRS'),    
     ('','Legislative Youth Advisory Counsel'),
-    ('','ZONING'),      
+    ('ZONING','ZONING'),      
 )
 
 class VIBillScraper(BillScraper, LXMLMixin):
     jurisdiction = 'vi'
     session = ''
+    committees = []
 
     def scrape(self, session, chambers):
         self.session = session
@@ -135,6 +137,7 @@ class VIBillScraper(BillScraper, LXMLMixin):
                 (landing_page,) = bill_row.xpath('.//td/font/a/@href')
                 self.scrape_bill(landing_page)
     
+    
     def scrape_bill(self, bill_page_url):
         bill_page = lxml.html.fromstring(self.get(bill_page_url).text)
         
@@ -149,8 +152,12 @@ class VIBillScraper(BillScraper, LXMLMixin):
         if bill_no:
             bill_no = bill_no[0]
         else:
-            self.error('Missing bill number {}'.format(bill_page_url))
-            return False
+            bill_no = bill_page.xpath('//span[@id="ctl00_ContentPlaceHolder_BillNumberLabel"]/text()')
+            if bill_no:
+                bill_no = bill_no[0]
+            else:
+                self.error('Missing bill number {}'.format(bill_page_url))
+                return False
                 
         bill = Bill(
             session=self.session,
@@ -175,8 +182,7 @@ class VIBillScraper(BillScraper, LXMLMixin):
         self.parse_date_actions(bill, bill_page)
         
         self.parse_actions(bill, bill_page)
-
-        #print bill
+        
         self.save_bill(bill)
     
     def parse_versions(self, bill, bill_page, bill_no):
@@ -223,6 +229,8 @@ class VIBillScraper(BillScraper, LXMLMixin):
                                 type=action_type)
     
     def parse_date(self, date_str):
+        #manual typo fix
+        date_str = date_str.replace('07/21/5','07/21/15')
         try: 
             return datetime.datetime.strptime(date_str, '%m/%d/%Y').date()
         except ValueError:
