@@ -28,6 +28,8 @@ _categorizers = {
     'received': 'bill:introduced',
     'presented to governor': 'governor:received',
     'presented to the governor': 'governor:received',
+    'approved by governor with line item(s) vetoed': 'governor:vetoed:line-item',
+    'vetoed by governor':'governor:vetoed',
     'approved by governor': 'governor:signed',
     'approved by the governor': 'governor:signed',
     'adopted': 'bill:passed',
