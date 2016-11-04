@@ -1,6 +1,6 @@
 from .bills import VIBillScraper
 #from .legislators import VTLegislatorScraper
-#from .committees import VTCommitteeScraper
+from .committees import VICommitteeScraper
 #from .events import VTEventScraper
 
 metadata = dict(
