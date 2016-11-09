@@ -29,8 +29,15 @@ metadata = dict(
             'start_year': 2013, 'end_year': 2014},
         {'name': '109', 'sessions': ['109'],
             'start_year': 2015, 'end_year': 2016},
+        {'name': '110', 'sessions': ['110'],
+            'start_year': 2016, 'end_year': 2017},
     ],
     session_details={
+        '110': {
+            'type': 'primary',
+            'display_name': '110th Regular Session (2016-2017)',
+            '_scraped_name': '110th General Assembly',
+            'start_date': datetime.date(2017, 1, 10)},
         '109': {
             'type': 'primary',
             'display_name': '109th Regular Session (2015-2016)',
