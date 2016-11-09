@@ -79,10 +79,19 @@ class AKBillScraper(BillScraper):
 
         for abbr in bill_abbrs:
             bill_type = bill_types[abbr[1:]]
-            bill_list_url = ('http://www.legis.state.ak.us/basis/range_multi'
+            # We need to include 4 digit bill numbers for some bill types
+            # But the search engine throws an error for other other types.
+            if abbr in ['HB','HR','SB','SR']:
+                bill_list_url = ('http://www.legis.state.ak.us/basis/range_multi'
                              '.asp?session=%s&bill1=%s1&bill2=%s9999' %
                              (session, abbr, abbr)
                             )
+            else:
+                bill_list_url = ('http://www.legis.state.ak.us/basis/range_multi'
+                             '.asp?session=%s&bill1=%s1&bill2=%s999' %
+                             (session, abbr, abbr)
+                            )
+
             doc = lxml.html.fromstring(self.get(bill_list_url).text)
             doc.make_links_absolute(bill_list_url)
             for bill_link in doc.xpath('//table[@align="center"]//tr/td[1]//a'):
