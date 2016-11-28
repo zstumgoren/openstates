@@ -83,10 +83,11 @@ def session_list():
     import requests
     import lxml.html
     doc = lxml.html.fromstring(requests.get(
-        'http://www.malegislature.gov/Bills/Search', verify=False).text)
-    sessions = doc.xpath("//select[@id='Input_GeneralCourtId']/option/text()")
+        'https://malegislature.gov/Bills/Search').text)
+    sessions = doc.xpath("//div[@data-refinername='lawsgeneralcourt']/div/label/text()")
 
-    sessions = [ re.sub("\(.*$", "", session).strip() for session in sessions]
+    #Remove all text between parens, like (Current) (7364)
+    sessions = list(filter(None, [re.sub(r'\([^)]*\)', "", session).strip() for session in sessions]))
     return sessions
 
 
