@@ -22,7 +22,6 @@ def main():
     bill_params = { "legislationId" : bill_id }
     bill_info = requests.post(bill_url, headers=headers, data=json.dumps(bill_params))
     bill_info = decode_json(bill_info.json()["d"])["data"]
-    leg_info = bill_info["Legislation"][0]
     pprint.pprint(bill_info)
 
 def decode_json(stringy_json):
