@@ -11,6 +11,8 @@ import sys
 
 import requests
 
+from openstates.utils import mkdir_p
+
 def main():
     headers = {"Content-Type":"application/json"}
     bill_url = "http://lims.dccouncil.us/_layouts/15/uploader/AdminProxy.aspx/GetPublicData"
@@ -22,7 +24,13 @@ def main():
     bill_params = { "legislationId" : bill_id }
     bill_info = requests.post(bill_url, headers=headers, data=json.dumps(bill_params))
     bill_info = decode_json(bill_info.json()["d"])["data"]
+    output_dir = 'data/dc/bills_raw/'
+    outfile = "".join([output_dir, "{}.json".format(bill_id)])
+    mkdir_p(output_dir)
+    with open(outfile, 'w') as out:
+        json.dump(bill_info, out, sort_keys=True, indent=4, separators=(',', ': '))
     pprint.pprint(bill_info)
+    print("\nRaw bill data saved: {}\n".format(outfile))
 
 def decode_json(stringy_json):
     #the "json" they send is recursively string-encoded.

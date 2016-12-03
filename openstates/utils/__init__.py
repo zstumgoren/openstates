@@ -1,4 +1,5 @@
 from .lxmlize import LXMLMixin
+from .dir import mkdir_p
 import re
 
 
