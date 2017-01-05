@@ -267,14 +267,24 @@ class COBillScraper(BillScraper):
 
         return ret
 
+    def get_bill_sheet_rows(self, session, chamber):
+        sheet_url = self.get_bill_folder(session, chamber)
+        sheet_html = self.get(sheet_url).text
+        sheet_page = lxml.html.fromstring(sheet_html)
+        sheet_page.make_links_absolute(sheet_url)
+        bills = sheet_page.xpath('//table/tr')
+        return [sheet_url, bills]
+
     def scrape_bill_sheet(self, session, chamber):
         """
         Scrape the bill sheet (the page full of bills and other small bits of data)
         """
-        sheet_url = self.get_bill_folder(session, chamber)
+        sheet_url, bills = self.get_bill_sheet_rows(session, chamber)
+        upper_or_lower = {"Senate": "upper", "House": "lower"}[chamber]
+        for bill in bills:
+            self.process_bill_sheet_row(bill, session, chamber, upper_lower, sheet_url)
 
-        bill_chamber = {"Senate": "upper", "House": "lower"}[chamber]
-
+    def process_bill_sheet_row(self, bill, session, chamber, upper_or_lower, sheet_url):
         index = {
             "id": 0,
             "title_sponsor": 1,
@@ -282,180 +292,171 @@ class COBillScraper(BillScraper):
             "history": 3,
             "votes": 7
         }
+        bill_id = self.read_td(bill[index["id"]][0])
+        if bill_id == None:
+            # Every other entry is null for some reason
+            return
 
-        sheet_html = self.get(sheet_url).text
-        sheet_page = lxml.html.fromstring(sheet_html)
-        sheet_page.make_links_absolute(sheet_url)
+        dot_loc = bill_id.find('.')
+        if dot_loc != -1:
+            # budget bills are missing the .pdf, don't truncate
+            bill_id = bill_id[:dot_loc]
+        title_and_sponsor = bill[index["title_sponsor"]][0]
 
-        bills = sheet_page.xpath('//table/tr')
+        bill_title = title_and_sponsor.text
+        bill_title_and_sponsor = title_and_sponsor.text_content()
+        if bill_title is None:
+            return # Odd ...
 
-        for bill in bills:
-            bill_id = self.read_td(bill[index["id"]][0])
+        sponsors = bill_title_and_sponsor.replace(bill_title, "").\
+            replace(" & ...", "").split("--")
 
-            if bill_id == None:
-                # Every other entry is null for some reason
-                continue
+        cats = {
+            "SB": "bill",
+            "HB": "bill",
+            "HR": "resolution",
+            "SR": "resolution",
+            "SCR": "concurrent resolution",
+            "HCR": "concurrent resolution",
+            "SJR": "joint resolution",
+            "HJR": "joint resolution",
+            "SM": "memorial",
+            "HM": "memorial"
+        }
 
-            dot_loc = bill_id.find('.')
-            if dot_loc != -1:
-                # budget bills are missing the .pdf, don't truncate
-                bill_id = bill_id[:dot_loc]
-            title_and_sponsor = bill[index["title_sponsor"]][0]
+        bill_type = None
 
-            bill_title = title_and_sponsor.text
-            bill_title_and_sponsor = title_and_sponsor.text_content()
-            if bill_title is None:
-                continue  # Odd ...
+        for cat in cats:
+            if bill_id[:len(cat)] == cat:
+                bill_type = cats[cat]
 
-            sponsors = bill_title_and_sponsor.replace(bill_title, "").\
-                replace(" & ...", "").split("--")
+        b = Bill(session, upper_or_lower, bill_id, bill_title,
+                 type=bill_type)
 
-            cats = {
-                "SB": "bill",
-                "HB": "bill",
-                "HR": "resolution",
-                "SR": "resolution",
-                "SCR": "concurrent resolution",
-                "HCR": "concurrent resolution",
-                "SJR": "joint resolution",
-                "HJR": "joint resolution",
-                "SM": "memorial",
-                "HM": "memorial"
-            }
+        b.add_source(sheet_url)
 
-            bill_type = None
+        versions_url = \
+            bill[index["version"]].xpath('font/a')[0].attrib["href"]
+        versions_url = versions_url
+        versions = self.parse_versions(versions_url)
 
-            for cat in cats:
-                if bill_id[:len(cat)] == cat:
-                    bill_type = cats[cat]
+        for version in versions:
+            b.add_version(version['name'], version['link'],
+                mimetype=version['mimetype'])
 
-            b = Bill(session, bill_chamber, bill_id, bill_title,
-                     type=bill_type)
+        bill_history_href = bill[index["history"]][0][0].attrib['href']
 
-            b.add_source(sheet_url)
+        history = self.parse_history(bill_history_href)
+        if history is None:
+            self.logger.warning("Bill history for %s is not correctly formatted" % bill_id)
+            return
+        b.add_source(bill_history_href)
 
-            versions_url = \
-                bill[index["version"]].xpath('font/a')[0].attrib["href"]
-            versions_url = versions_url
-            versions = self.parse_versions(versions_url)
+        chamber_map = dict(Senate='upper', House='lower')
+        for action, date in history:
+            action_actor = chamber_map.get(chamber, chamber)
+            attrs = dict(actor=action_actor, action=action, date=date)
+            attrs.update(self.categorizer.categorize(action))
+            b.add_action(**attrs)
 
-            for version in versions:
-                b.add_version(version['name'], version['link'],
-                    mimetype=version['mimetype'])
-
-            bill_history_href = bill[index["history"]][0][0].attrib['href']
-
-            history = self.parse_history(bill_history_href)
-            if history is None:
-                self.logger.warning("Bill history for %s is not correctly formatted" % bill_id)
-                continue
-            b.add_source(bill_history_href)
-
-            chamber_map = dict(Senate='upper', House='lower')
-            for action, date in history:
-                action_actor = chamber_map.get(chamber, chamber)
-                attrs = dict(actor=action_actor, action=action, date=date)
-                attrs.update(self.categorizer.categorize(action))
-                b.add_action(**attrs)
-
-            for sponsor in sponsors:
-                if sponsor != None and sponsor != "(NONE)" and \
-                   sponsor != "":
-                    if "&" in sponsor:
-                        for sponsor in [x.strip() for x in sponsor.split("&")]:
-                            b.add_sponsor("primary", sponsor)
-                    else:
+        for sponsor in sponsors:
+            if sponsor != None and sponsor != "(NONE)" and \
+               sponsor != "":
+                if "&" in sponsor:
+                    for sponsor in [x.strip() for x in sponsor.split("&")]:
                         b.add_sponsor("primary", sponsor)
-
-            # Now that we have history, let's see if we can't grab some
-            # votes
-
-            bill_vote_href, = bill.xpath(".//a[contains(text(), 'Votes')]")
-            bill_vote_href = bill_vote_href.attrib['href']
-            #bill_vote_href = self.get_vote_url(bill_id, session)
-            votes = self.parse_votes(bill_vote_href)
-
-            if (votes['sanity-check'] == 'This site only supports frames '
-                    'compatible browsers!'):
-                votes['votes'] = []
-            elif votes['sanity-check'] != bill_id:
-                self.warning("XXX: READ ME! Sanity check failed!")
-                self.warning(" -> Scraped ID: " + votes['sanity-check'])
-                self.warning(" -> 'Real' ID:  " + bill_id)
-                assert votes['sanity-check'] == bill_id
-
-            for vote in votes['votes']:
-                filed_votes = vote['votes']
-                passage = vote['meta']
-                result = vote['result']
-
-                composite_time = "%s %s" % (
-                    passage['x-parent-date'],
-                    passage['TIME']
-                )
-                # It's now like: 04/01/2011 02:10:14 PM
-                pydate = dt.datetime.strptime(composite_time,
-                    "%m/%d/%Y %I:%M:%S %p")
-                hasHouse = "House" in passage['x-parent-ctty']
-                hasSenate = "Senate" in passage['x-parent-ctty']
-
-                if hasHouse and hasSenate:
-                    actor = "joint"
-                elif hasHouse:
-                    actor = "lower"
                 else:
-                    actor = "upper"
+                    b.add_sponsor("primary", sponsor)
 
-                other = (int(result['EXC']) + int(result['ABS']))
-                # OK, sometimes the Other count is wrong.
-                local_other = 0
-                for voter in filed_votes:
-                    l_vote = filed_votes[voter].lower().strip()
-                    if l_vote != "yes" and l_vote != "no":
-                        local_other = local_other + 1
+        # Now that we have history, let's see if we can't grab some
+        # votes
 
-                if local_other != other:
-                    self.warning( \
-                        "XXX: !!!WARNING!!! - resetting the 'OTHER' VOTES")
-                    self.warning(" -> Old: %s // New: %s" % (
-                        other, local_other
-                    ))
-                    other = local_other
+        bill_vote_href, = bill.xpath(".//a[contains(text(), 'Votes')]")
+        bill_vote_href = bill_vote_href.attrib['href']
+        #bill_vote_href = self.get_vote_url(bill_id, session)
+        votes = self.parse_votes(bill_vote_href)
 
-                passed = (result['FINAL_ACTION'] == "PASS")
-                if passage['MOTION'].strip() == "":
-                    continue
+        if (votes['sanity-check'] == 'This site only supports frames '
+                'compatible browsers!'):
+            votes['votes'] = []
+        elif votes['sanity-check'] != bill_id:
+            self.warning("XXX: READ ME! Sanity check failed!")
+            self.warning(" -> Scraped ID: " + votes['sanity-check'])
+            self.warning(" -> 'Real' ID:  " + bill_id)
+            assert votes['sanity-check'] == bill_id
 
-                if "without objection" in passage['MOTION'].lower():
-                    passed = True
+        for vote in votes['votes']:
+            filed_votes = vote['votes']
+            passage = vote['meta']
+            result = vote['result']
 
-                v = Vote(actor, pydate, passage['MOTION'],
-                         passed,
-                         int(result['YES']), int(result['NO']),
-                         other,
-                         moved=passage['MOVED'],
-                         seconded=passage['SECONDED'])
+            composite_time = "%s %s" % (
+                passage['x-parent-date'],
+                passage['TIME']
+            )
+            # It's now like: 04/01/2011 02:10:14 PM
+            pydate = dt.datetime.strptime(composite_time,
+                "%m/%d/%Y %I:%M:%S %p")
+            hasHouse = "House" in passage['x-parent-ctty']
+            hasSenate = "Senate" in passage['x-parent-ctty']
 
-                v.add_source(vote['meta']['url'])
-                # v.add_source( bill_vote_href )
+            if hasHouse and hasSenate:
+                actor = "joint"
+            elif hasHouse:
+                actor = "lower"
+            else:
+                actor = "upper"
 
-                # XXX: Add more stuff to kwargs, we have a ton of data
-                seen = set([])
-                for voter in filed_votes:
-                    who = voter
-                    if who in seen:
-                        raise Exception("Seeing the double-thing. - bug #702")
-                    seen.add(who)
+            other = (int(result['EXC']) + int(result['ABS']))
+            # OK, sometimes the Other count is wrong.
+            local_other = 0
+            for voter in filed_votes:
+                l_vote = filed_votes[voter].lower().strip()
+                if l_vote != "yes" and l_vote != "no":
+                    local_other = local_other + 1
 
-                    vote = filed_votes[who]
-                    if vote.lower() == "yes":
-                        v.yes(who)
-                    elif vote.lower() == "no":
-                        v.no(who)
-                    else:
-                        v.other(who)
-                b.add_vote(v)
-            self.save_bill(b)
+            if local_other != other:
+                self.warning( \
+                    "XXX: !!!WARNING!!! - resetting the 'OTHER' VOTES")
+                self.warning(" -> Old: %s // New: %s" % (
+                    other, local_other
+                ))
+                other = local_other
+
+            passed = (result['FINAL_ACTION'] == "PASS")
+            if passage['MOTION'].strip() == "":
+                return
+
+            if "without objection" in passage['MOTION'].lower():
+                passed = True
+
+            v = Vote(actor, pydate, passage['MOTION'],
+                     passed,
+                     int(result['YES']), int(result['NO']),
+                     other,
+                     moved=passage['MOVED'],
+                     seconded=passage['SECONDED'])
+
+            v.add_source(vote['meta']['url'])
+            # v.add_source( bill_vote_href )
+
+            # XXX: Add more stuff to kwargs, we have a ton of data
+            seen = set([])
+            for voter in filed_votes:
+                who = voter
+                if who in seen:
+                    raise Exception("Seeing the double-thing. - bug #702")
+                seen.add(who)
+
+                vote = filed_votes[who]
+                if vote.lower() == "yes":
+                    v.yes(who)
+                elif vote.lower() == "no":
+                    v.no(who)
+                else:
+                    v.other(who)
+            b.add_vote(v)
+        self.save_bill(b)
 
     def scrape(self, chamber, session):
         """
