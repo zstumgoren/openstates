@@ -282,7 +282,7 @@ class COBillScraper(BillScraper):
         sheet_url, bills = self.get_bill_sheet_rows(session, chamber)
         upper_or_lower = {"Senate": "upper", "House": "lower"}[chamber]
         for bill in bills:
-            self.process_bill_sheet_row(bill, session, chamber, upper_lower, sheet_url)
+            self.process_bill_sheet_row(bill, session, chamber, upper_or_lower, sheet_url)
 
     def process_bill_sheet_row(self, bill, session, chamber, upper_or_lower, sheet_url):
         index = {
